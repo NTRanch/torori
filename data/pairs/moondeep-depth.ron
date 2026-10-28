@@ -1,0 +1,103 @@
+// GAP5 §7.1 worked records: the five depth pairs under the shared Unraveling.
+// Cue hashes fixture-grade: sha256(asset_ref). The safeword form is
+// R5-required construction (the spec text names none for this program).
+(
+    program_id: "moondeep.depth",
+    pairs: [
+        (
+            pair_id: "pair.moondeep.depth.t1-echoes",
+            program: (program_id: "moondeep.depth", series: None, consumer_class: Fiction),
+            subject: (form: Single, identity_ref: "moondeep.diver", partner_ref: None, trigger_source: OwnState),
+            install: (
+                cue: (kind: SpokenWord, asset_ref: "audio/moondeep/echoes.wav", asset_sha256: "98f4ea0c487e43b25cba83fc9ddeb25781b5bfaef956dafe5400dc59a4e50820", canonical: true, variants: []),
+                effect: (summary: "the first echo pair", disclosure_ref: "disclosure.moondeep.depth", fiction_effect: None),
+                install_contexts: ["moondeep.descent"],
+                countermand_allowed: true,
+            ),
+            release: Shared("release.moondeep.unraveling"),
+            scope: (reach: Program, contexts: ["moondeep.descent"]),
+            author: (estate_ref: "torori-fixtures", canon_refs: ["GAP5-SPEC.md"]),
+            manifest_link: (cue_manifest: "pair.moondeep.depth.t1-echoes", release_manifests: []),
+        ),
+        (
+            pair_id: "pair.moondeep.depth.t2-second-sight",
+            program: (program_id: "moondeep.depth", series: None, consumer_class: Fiction),
+            subject: (form: Single, identity_ref: "moondeep.diver", partner_ref: None, trigger_source: OwnState),
+            install: (
+                cue: (kind: SpokenWord, asset_ref: "audio/moondeep/second-sight.wav", asset_sha256: "7b06876aea36a5984beffc367c8897691dec6de05af4ba13a3773904eb75a071", canonical: true, variants: []),
+                effect: (summary: "the second-sight pair", disclosure_ref: "disclosure.moondeep.depth", fiction_effect: None),
+                install_contexts: ["moondeep.descent"],
+                countermand_allowed: true,
+            ),
+            release: Shared("release.moondeep.unraveling"),
+            scope: (reach: Program, contexts: ["moondeep.descent"]),
+            author: (estate_ref: "torori-fixtures", canon_refs: ["GAP5-SPEC.md"]),
+            manifest_link: (cue_manifest: "pair.moondeep.depth.t2-second-sight", release_manifests: []),
+        ),
+        (
+            pair_id: "pair.moondeep.depth.t3-motes",
+            program: (program_id: "moondeep.depth", series: None, consumer_class: Fiction),
+            subject: (form: Single, identity_ref: "moondeep.diver", partner_ref: None, trigger_source: OwnState),
+            install: (
+                cue: (kind: SpokenWord, asset_ref: "audio/moondeep/motes.wav", asset_sha256: "bb97c1bb2dae17d70ce5c21fea355fb87204d1da46b656c6860c17efa491107b", canonical: true, variants: []),
+                effect: (summary: "the spoken word that hangs motes of light in the deep (GAP5 §7.1 worked record)", disclosure_ref: "disclosure.moondeep.depth", fiction_effect: None),
+                install_contexts: ["moondeep.descent"],
+                countermand_allowed: true,
+            ),
+            release: Shared("release.moondeep.unraveling"),
+            scope: (reach: Program, contexts: ["moondeep.descent"]),
+            author: (estate_ref: "torori-fixtures", canon_refs: ["GAP5-SPEC.md"]),
+            manifest_link: (cue_manifest: "pair.moondeep.depth.t3-motes", release_manifests: []),
+        ),
+        (
+            pair_id: "pair.moondeep.depth.t4-wielded-bar",
+            program: (program_id: "moondeep.depth", series: None, consumer_class: Fiction),
+            subject: (form: Single, identity_ref: "moondeep.diver", partner_ref: None, trigger_source: OwnState),
+            install: (
+                cue: (kind: SpokenWord, asset_ref: "audio/moondeep/wielded-bar.wav", asset_sha256: "fd7cd041d07a2e963c0de7901eb13fe89b019295e7eccc9a5b69784b08bfd53e", canonical: true, variants: []),
+                effect: (summary: "the wielded-bar pair", disclosure_ref: "disclosure.moondeep.depth", fiction_effect: None),
+                install_contexts: ["moondeep.descent"],
+                countermand_allowed: true,
+            ),
+            release: Shared("release.moondeep.unraveling"),
+            scope: (reach: Program, contexts: ["moondeep.descent"]),
+            author: (estate_ref: "torori-fixtures", canon_refs: ["GAP5-SPEC.md"]),
+            manifest_link: (cue_manifest: "pair.moondeep.depth.t4-wielded-bar", release_manifests: []),
+        ),
+        (
+            pair_id: "pair.moondeep.depth.t5-two-hands",
+            program: (program_id: "moondeep.depth", series: None, consumer_class: Fiction),
+            subject: (form: Single, identity_ref: "moondeep.diver", partner_ref: None, trigger_source: OwnState),
+            install: (
+                cue: (kind: SpokenWord, asset_ref: "audio/moondeep/two-hands.wav", asset_sha256: "aaea67a6a1d2708428fc038b2e74d099bf145053b85381273fc7239aaa20f84b", canonical: true, variants: []),
+                effect: (summary: "the two-hands pair", disclosure_ref: "disclosure.moondeep.depth", fiction_effect: None),
+                install_contexts: ["moondeep.descent"],
+                countermand_allowed: true,
+            ),
+            release: Shared("release.moondeep.unraveling"),
+            scope: (reach: Program, contexts: ["moondeep.descent"]),
+            author: (estate_ref: "torori-fixtures", canon_refs: ["GAP5-SPEC.md"]),
+            manifest_link: (cue_manifest: "pair.moondeep.depth.t5-two-hands", release_manifests: []),
+        )
+    ],
+    shared_releases: [
+        (
+            release_id: "release.moondeep.unraveling",
+            form: ScopedPurge,
+            cue: None,
+            asset_refs: ["audio/moondeep/unraveling.wav"],
+            covers: ["pair.moondeep.depth.t1-echoes", "pair.moondeep.depth.t2-second-sight", "pair.moondeep.depth.t3-motes", "pair.moondeep.depth.t4-wielded-bar", "pair.moondeep.depth.t5-two-hands"],
+            except: [],
+            budget: OncePerCampaign,
+        ),
+        (
+            release_id: "release.moondeep.safeword",
+            form: SafewordClass,
+            cue: Some((kind: SpokenWord, asset_ref: "audio/moondeep/safeword.wav", asset_sha256: "f225450c7e11676c562607c8fea8b52389f553f252596afb382ab9444bc64f12", canonical: true, variants: [])),
+            asset_refs: ["audio/moondeep/safeword.wav"],
+            covers: ["pair.moondeep.depth.t1-echoes", "pair.moondeep.depth.t2-second-sight", "pair.moondeep.depth.t3-motes", "pair.moondeep.depth.t4-wielded-bar", "pair.moondeep.depth.t5-two-hands"],
+            except: [],
+            budget: Unlimited,
+        )
+    ],
+)

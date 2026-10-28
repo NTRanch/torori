@@ -1,0 +1,24 @@
+{
+  "schema": "torori/conditioning",
+  "version": 1,
+  "frozen_at_stage": "T3",
+  "note": "The conditioning-parameter contract neemu S3's delivery normalization targets (build brief §6, STUDY §6.2). Ranges are refused, never clamped.",
+  "type": "object",
+  "required": ["text", "identity_ref", "breath_bracket", "determinism_class"],
+  "properties": {
+    "text": {"type": "string"},
+    "identity_ref": {"type": "string", "description": "estate VoiceIdentity ref; never a source performer"},
+    "instruction": {"type": ["string", "null"]},
+    "f0_median_hz": {"type": ["number", "null"], "minimum": 40, "maximum": 600},
+    "f0_range_semitones": {"type": ["number", "null"], "minimum": 0, "maximum": 36},
+    "tempo_syllables_per_sec": {"type": ["number", "null"], "minimum": 0.5, "maximum": 12},
+    "pause_structure": {"type": ["string", "null"]},
+    "breathiness": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "grade": {"type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "arousal grade (AC-2)"},
+    "accent_profile_ref": {"type": ["string", "null"], "description": "neemu §3.12 accent registry ref"},
+    "accent_intensity": {"type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "required iff accent_profile_ref is set"},
+    "breath_bracket": {"type": "string", "enum": ["Required", "NotRequired"], "description": "Required for fragments (AC-3)"},
+    "determinism_class": {"type": "string", "enum": ["BIT-EXACT", "SEED-REPRODUCIBLE", "OUTPUT-UNIQUE"]},
+    "seed": {"type": ["integer", "null"], "description": "null = lane-assigned; the assigned seed is recorded in the asset manifest"}
+  }
+}

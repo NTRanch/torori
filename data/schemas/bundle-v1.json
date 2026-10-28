@@ -1,0 +1,54 @@
+{
+  "schema": "torori/cue-bundle",
+  "version": 1,
+  "frozen_at_stage": "T3",
+  "note": "File-bundle hand-off between neemu (producer) and torori (consumer). Files only — no server coupling exists or is permitted (build brief §2, GAP5 Decision 1). A bundle is a directory holding bundle.ron plus the asset files it names.",
+  "validation_order": ["schema_version", "content_hashes", "provenance_chain", "tier_stamps", "target_voice", "pairs_v1_v8"],
+  "type": "object",
+  "required": ["schema_version", "bundle_id", "producer", "cues", "pairs", "assets", "provenance"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "bundle_id": {"type": "string"},
+    "producer": {"type": "string", "description": "producer identity, e.g. neemu@<version>+<build>"},
+    "cues": {"type": "array", "items": {"$ref": "#/$defs/torori_cue"}},
+    "pairs": {"type": "array", "items": {"description": "GAP5 TriggerPair records (RON schema 1)"}},
+    "shared_releases": {"type": "array", "items": {"description": "GAP5 shared ReleaseForm records the pairs resolve against"}, "default": []},
+    "assets": {"type": "array", "items": {"$ref": "#/$defs/bundle_asset"}},
+    "provenance": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/provenance_link"},
+    "content_hash_note": "content hash = sha256 of the canonical RON of (cues, pairs, asset sha256 list); the final provenance link must carry it. Ingest is idempotent on this hash."
+  },
+  "$defs": {
+    "torori_cue": {
+      "type": "object",
+      "required": ["cue_id", "text", "intent", "target_voice", "tier", "conditioning"],
+      "properties": {
+        "cue_id": {"type": "string"},
+        "text": {"type": "string", "description": "from the DialogueLine"},
+        "intent": {"type": "string", "description": "scene function"},
+        "target_voice": {"type": "string", "description": "estate VoiceIdentity ref; must resolve anchored-or-better at ingest"},
+        "sfx_pairs": {"type": "array", "items": {"type": "string"}, "description": "torori catalogue refs"},
+        "tier": {"type": "string", "enum": ["Measured", "Authored", "Inferred"], "description": "neemu tier stamp; torori re-checks before any training-class use"},
+        "conditioning": {"description": "torori/conditioning v1; its text and identity_ref must equal the cue's text and target_voice"}
+      }
+    },
+    "bundle_asset": {
+      "type": "object",
+      "required": ["asset_ref", "sha256", "manifest"],
+      "properties": {
+        "asset_ref": {"type": "string", "description": "path inside the bundle directory"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "manifest": {"description": "§5.2 asset manifest; must validate complete"}
+      }
+    },
+    "provenance_link": {
+      "type": "object",
+      "required": ["step", "actor", "artifact_sha256"],
+      "properties": {
+        "step": {"type": "string"},
+        "actor": {"type": "string"},
+        "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}
+}

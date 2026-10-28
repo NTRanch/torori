@@ -1,0 +1,43 @@
+// GAP5 §7.2 worked record: the Tandem service drop-snap (Player, Session reach).
+// Program records: the Tandem Purge (FullReset; its deletion semantics are a
+// consumer act under R6's Player exception) and the STOP SafewordClass.
+(
+    program_id: "moondeep.tandem",
+    pairs: [
+        (
+            pair_id: "pair.moondeep.tandem.service.drop-snap",
+            program: (program_id: "moondeep.tandem", series: None, consumer_class: Player),
+            subject: (form: Single, identity_ref: "moondeep.tandem.player", partner_ref: None, trigger_source: OwnState),
+            install: (
+                cue: (kind: Snap, asset_ref: "audio/moondeep/tandem/drop-snap.wav", asset_sha256: "156dae03203222a0846473b5016dbac6657632b04c44b7e801f7bab7813d869a", canonical: true, variants: []),
+                effect: (summary: "the service drop-snap (GAP5 §7.2 worked record)", disclosure_ref: "disclosure.moondeep.tandem", fiction_effect: None),
+                install_contexts: ["tandem.session"],
+                countermand_allowed: true,
+            ),
+            release: Embedded((cue: Some((kind: SpokenWord, asset_ref: "audio/moondeep/tandem/wakener.wav", asset_sha256: "8c460324a9b13a260d47bd276a59bd0eb310643461e25893193d5a29410b6c70", canonical: true, variants: [])), asset_refs: ["audio/moondeep/tandem/wakener.wav"], covers: [], except: [], budget: Unlimited)),
+            scope: (reach: Session, contexts: ["tandem.session"]),
+            author: (estate_ref: "torori-fixtures", canon_refs: ["GAP5-SPEC.md"]),
+            manifest_link: (cue_manifest: "pair.moondeep.tandem.service.drop-snap", release_manifests: []),
+        )
+    ],
+    shared_releases: [
+        (
+            release_id: "release.moondeep.tandem.purge",
+            form: FullReset,
+            cue: None,
+            asset_refs: ["audio/moondeep/tandem/purge.wav"],
+            covers: ["pair.moondeep.tandem.service.drop-snap"],
+            except: [],
+            budget: Unlimited,
+        ),
+        (
+            release_id: "release.moondeep.tandem.stop",
+            form: SafewordClass,
+            cue: Some((kind: SpokenWord, asset_ref: "audio/moondeep/tandem/stop.wav", asset_sha256: "fde4c0176bf8fe085dc8be9d7c14ac9fd96ac0adceb1532aeae0d6167b6d8033", canonical: true, variants: [])),
+            asset_refs: ["audio/moondeep/tandem/stop.wav"],
+            covers: ["pair.moondeep.tandem.service.drop-snap"],
+            except: [],
+            budget: Unlimited,
+        )
+    ],
+)

@@ -1,0 +1,19 @@
+[package]
+name = "torori"
+version = "0.0.1"
+edition = "2024"
+license = "Apache-2.0"
+description = "Torori — the NTRanch estate sound MCP: catalogue serving, OpenNSFW library lane, GAP5 pair validation, cue-bundle ingest, Qwen3-TTS voice lane and deterministic DSP/comp SFX lanes. Modern MCP era only (2026-07-28)."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ron = "0.8"
+sha2 = "0.10"
+# Fleet pin (D-113): one rmcp version across every estate server;
+# bumps are single fleet events. Modern era only — see src/guard.rs.
+rmcp = { version = "=3.8.0", default-features = false, features = ["server"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "process", "rt-multi-thread", "sync", "time"] }
+
+[profile.release]
+lto = true
