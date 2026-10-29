@@ -1,6 +1,6 @@
 [package]
 name = "torori"
-version = "0.0.1"
+version = "1.0.0"
 edition = "2024"
 license = "Apache-2.0"
 description = "Torori — the NTRanch estate sound MCP: catalogue serving, OpenNSFW library lane, GAP5 pair validation, cue-bundle ingest, Qwen3-TTS voice lane and deterministic DSP/comp SFX lanes. Modern MCP era only (2026-07-28)."
