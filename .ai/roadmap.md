@@ -79,7 +79,7 @@ Curated 2026-10-28 (D-313 Phase 0 — NTRanch four → 1.0 program): the templat
 - [x] R-604 Consumer sessions filed as D-116 utilization evidence (G-T3): first rose/phlow client sessions + one game-shaped production session; failures fixed in place or recorded
   - verify: test -f UTILIZATION.md
   - evidence: 1 verify commands, all exit 0 at 2026-10-29T04:57:52Z
-- [ ] R-605 torori 1.0.0 published to crates.io under the NTRanch account
+- [~] R-605 torori 1.0.0 published to crates.io under the NTRanch account
   - verify: curl -sf -H "User-Agent: bloch-roadmap" https://crates.io/api/v1/crates/torori/1.0.0 -o /dev/null
   - evidence:
 
