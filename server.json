@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ntranch/torori",
+  "title": "Torori",
+  "description": "NTRanch sound MCP: catalogue, library lane, pair validation, cue bundles, voice and DSP SFX lanes.",
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/NTRanch/torori",
+  "repository": {
+    "url": "https://github.com/NTRanch/torori",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "cargo",
+      "identifier": "torori",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
