@@ -314,8 +314,25 @@ pub fn generate(paths: &Paths, voices: &VoiceRegistry, args: &Value) -> TororiRe
 /// `torori_voice_qc`: recompute the QC record for a stored
 /// asset and check its manifest; when a golden exists for the
 /// same (identity, slot), report deltas against it.
-pub fn voice_qc(paths: &Paths, args: &Value) -> TororiResult<Value> {
+///
+/// S2 additions (PLAN §4, D-483): the QC record carries the
+/// Tier 2 drift alarm for the asset's identity (alarm-only,
+/// cosine UNVERIFIED — see `crate::asr::DriftAlarm`), and when
+/// the caller passes `source_text` (the line the asset was
+/// generated from), Tier 1 runs: the configured ASR driver
+/// transcribes the stored WAV and the result carries the
+/// round-trip WER record under `tier1`. Asking for Tier 1
+/// without a configured ASR driver is the typed
+/// `asr_unconfigured` refusal — a requested measurement is
+/// never silently skipped.
+pub fn voice_qc(paths: &Paths, voices: &VoiceRegistry, args: &Value) -> TororiResult<Value> {
     let asset_id = arg_str(args, "asset_id")?;
+    let source_text = match args.get("source_text") {
+        None | Some(Value::Null) => None,
+        Some(v) => Some(v.as_str().ok_or_else(|| {
+            TororiError::invalid_input("source_text must be a string (the line as authored)")
+        })?),
+    };
     let index = read_index(paths)?;
     let record = index
         .records
@@ -327,7 +344,20 @@ pub fn voice_qc(paths: &Paths, args: &Value) -> TororiResult<Value> {
         .map_err(|e| TororiError::new("io", format!("read manifest: {e}")))?;
     let manifest = AssetManifest::from_ron(&manifest_text)?;
     let wav = audio::read_wav(std::path::Path::new(&record.file))?;
-    let fresh = qc::compute(&wav, None, false);
+    let mut fresh = qc::compute(&wav, None, false);
+    fresh.speaker_drift = Some(crate::asr::DriftAlarm::assess(
+        voices
+            .identities
+            .iter()
+            .find(|i| i.identity_ref == manifest.character_id),
+    ));
+    let tier1 = match source_text {
+        Some(text) => Some(crate::asr::round_trip(
+            std::path::Path::new(&record.file),
+            text,
+        )?),
+        None => None,
+    };
     let golden = index
         .records
         .iter()
@@ -358,6 +388,7 @@ pub fn voice_qc(paths: &Paths, args: &Value) -> TororiResult<Value> {
         "manifest_problems": manifest.validate(),
         "grading": record.grading,
         "qc": serde_json::to_value(&fresh).unwrap_or(Value::Null),
+        "tier1": serde_json::to_value(&tier1).unwrap_or(Value::Null),
         "golden_delta": golden,
     }))
 }

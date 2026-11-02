@@ -92,8 +92,8 @@ fn voice_lane_end_to_end_with_fake_driver() {
     );
     let asset_id = first["asset_id"].as_str().unwrap().to_string();
     // Manifest on disk validates complete (§5.2 gate).
-    let qc =
-        torori::voice::voice_qc(&state.paths, &json!({"asset_id": asset_id})).expect("voice_qc");
+    let qc = torori::voice::voice_qc(&state.paths, &state.voices, &json!({"asset_id": asset_id}))
+        .expect("voice_qc");
     assert_eq!(qc["manifest_complete"], true, "{qc}");
     assert!(
         qc["golden_delta"].is_object(),

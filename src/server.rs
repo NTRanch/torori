@@ -298,12 +298,13 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_voice_qc",
             "voice",
-            "Recompute a stored asset's §5.3 QC record, verify §5.2 manifest completeness, report golden deltas when a golden exists.",
+            "Recompute a stored asset's §5.3 QC record, verify §5.2 manifest completeness, report golden deltas when a golden exists. Adds Tier 2 drift alarm (alarm-only, unverified) and, with source_text, Tier 1 ASR WER (provisional bars).",
             json!({"type": "object", "properties": {
-                "asset_id": {"type": "string"}
+                "asset_id": {"type": "string"},
+                "source_text": {"type": "string"}
             }, "required": ["asset_id"]}),
             READ,
-            30,
+            180,
         ),
     ]
 }
@@ -373,7 +374,7 @@ pub fn dispatch(state: &mut TororiState, name: &str, args: &Value) -> Result<Val
         "torori_pair_list" => state.bundles.pair_list(args),
         "torori_voice_list" => state.voices.list(args),
         "torori_voice_generate" => crate::voice::generate(&state.paths, &state.voices, args),
-        "torori_voice_qc" => crate::voice::voice_qc(&state.paths, args),
+        "torori_voice_qc" => crate::voice::voice_qc(&state.paths, &state.voices, args),
         "torori_sfx_render" => crate::sfx::render(&state.paths, args),
         "torori_comp_assemble" => crate::comp::assemble(&state.paths, &state.library, args),
         _ => Err(TororiError::new(

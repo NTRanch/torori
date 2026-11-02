@@ -14,7 +14,9 @@
 //! Rights law (no real-person likeness, the OpenNSFW conjunction
 //! ban, per-file licence states) is code, not documentation.
 
+pub mod asr;
 pub mod audio;
+pub mod batch;
 pub mod bundles;
 pub mod catalogue;
 pub mod comp;

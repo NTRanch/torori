@@ -46,6 +46,13 @@ pub struct QcRecord {
     pub breath_bracket: Option<BreathBracket>,
     /// Inter-channel onset offset for paired/stereo assets, ms.
     pub onset_offset_ms: Option<f64>,
+    /// Tier 2 (PLAN §4) identity-drift alarm, attached by the
+    /// QC tool when registry context is available. Alarm-only:
+    /// it admits nothing and refuses nothing. `None` in records
+    /// computed without identity context, and in every pre-S2
+    /// manifest (serde default keeps those parseable).
+    #[serde(default)]
+    pub speaker_drift: Option<crate::asr::DriftAlarm>,
 }
 
 fn round3(v: f64) -> f64 {
@@ -226,6 +233,7 @@ pub fn compute(
         dc_offset: round3(audio::dc_offset(&mono)),
         breath_bracket,
         onset_offset_ms,
+        speaker_drift: None,
     }
 }
 
