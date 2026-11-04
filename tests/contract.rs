@@ -28,16 +28,29 @@ fn meta() -> Value {
 }
 
 fn spawn() -> Session {
+    spawn_with(&[], &[])
+}
+
+fn spawn_with(extra_args: &[&str], envs: &[(&str, &str)]) -> Session {
     let n = SEQ.fetch_add(1, Ordering::SeqCst);
     let root = std::env::temp_dir().join(format!("torori-contract-{}-{n}", std::process::id()));
     let data = format!("{}/data", env!("CARGO_MANIFEST_DIR"));
-    let mut child = Command::new(env!("CARGO_BIN_EXE_torori"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_torori"));
+    command
         .args(["--data", &data, "--root", root.to_str().unwrap()])
+        .args(extra_args)
+        // Isolate the launch from the test machine's own profile
+        // selectors and config files (D-934 precedence inputs).
+        .env_remove("TORORI_TOOL_PROFILE")
+        .env_remove("TORORI_CONFIG")
+        .env("XDG_CONFIG_HOME", root.join("xdg-config"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("spawn torori");
+        .stderr(Stdio::null());
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    let mut child = command.spawn().expect("spawn torori");
     let stdin = child.stdin.take().unwrap();
     let stdout = BufReader::new(child.stdout.take().unwrap());
     Session {
@@ -124,7 +137,10 @@ fn legacy_initialize_is_refused_and_the_server_stays_up() {
 
 #[test]
 fn every_tool_is_annotated_with_a_properties_schema() {
-    let mut s = spawn();
+    // The full surface (D-934): the default launch now serves
+    // the core profile only, so the 19-tool annotation sweep
+    // launches the explicit full profile.
+    let mut s = spawn_with(&["--profile", "full"], &[]);
     let list = s.request(1, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
     // All stages: 1 + 4 + 4 + 5 + 3 + 2 = 19 tools.
@@ -160,6 +176,7 @@ fn status_call_returns_server_counts() {
     let payload = Session::payload(&resp);
     assert_eq!(payload["name"], "torori");
     assert_eq!(payload["protocol"], "2026-07-28");
+    assert_eq!(payload["tool_profile"], "core");
     assert!(payload["counts"]["catalogue_entries"].is_number());
 }
 
@@ -213,4 +230,111 @@ fn oversized_line_is_refused_not_fatal() {
     assert_eq!(resp["error"]["code"], -32700, "oversized: {resp}");
     let list = s.request(2, "tools/list", json!({}));
     assert!(list["result"]["tools"].is_array(), "still up: {list}");
+}
+
+// ── D-934 tool profiles, wire level ─────────────────────────────
+
+fn tool_names(list: &Value) -> Vec<&str> {
+    list["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["name"].as_str().unwrap())
+        .collect()
+}
+
+#[test]
+fn default_profile_serves_only_the_core_surface() {
+    let mut s = spawn();
+    let list = s.request(1, "tools/list", json!({}));
+    assert_eq!(
+        tool_names(&list),
+        vec![
+            "torori_status",
+            "torori_catalogue_search",
+            "torori_catalogue_get",
+            "torori_catalogue_stats",
+            "torori_catalogue_transition",
+        ]
+    );
+}
+
+#[test]
+fn non_profile_tool_is_unknown_to_the_process() {
+    let mut s = spawn();
+    let resp = s.call(1, "torori_sfx_render", json!({"instrument": "impact"}));
+    assert_eq!(resp["error"]["code"], -32602, "non-profile call: {resp}");
+    assert!(
+        resp["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unknown tool")
+    );
+    // A core tool in the same session still answers.
+    let resp = s.call(2, "torori_status", json!({}));
+    assert_ne!(resp["result"]["isError"], true, "status call: {resp}");
+}
+
+#[test]
+fn profile_argument_and_env_select_packs_with_argument_winning() {
+    let mut s = spawn_with(&["--profile", "bundles"], &[]);
+    let list = s.request(1, "tools/list", json!({}));
+    assert_eq!(tool_names(&list).len(), 10, "bundles list: {list}");
+    assert!(tool_names(&list).contains(&"torori_pair_validate"));
+
+    let mut s = spawn_with(&[], &[("TORORI_TOOL_PROFILE", "voice")]);
+    let list = s.request(1, "tools/list", json!({}));
+    assert_eq!(tool_names(&list).len(), 8, "voice list: {list}");
+    let status = s.call(2, "torori_status", json!({}));
+    assert_eq!(Session::payload(&status)["tool_profile"], "core+voice");
+
+    let mut s = spawn_with(&["--profile", "sfx"], &[("TORORI_TOOL_PROFILE", "voice")]);
+    let list = s.request(1, "tools/list", json!({}));
+    assert_eq!(tool_names(&list).len(), 6, "arg-over-env list: {list}");
+    assert!(tool_names(&list).contains(&"torori_sfx_render"));
+}
+
+#[test]
+fn config_file_selects_a_pack() {
+    let n = SEQ.fetch_add(1, Ordering::SeqCst);
+    let config = std::env::temp_dir().join(format!(
+        "torori-contract-config-{}-{n}.toml",
+        std::process::id()
+    ));
+    std::fs::write(&config, "tool_profile = \"library\"\n").unwrap();
+    let mut s = spawn_with(&["--config", config.to_str().unwrap()], &[]);
+    let list = s.request(1, "tools/list", json!({}));
+    assert_eq!(tool_names(&list).len(), 9, "config list: {list}");
+    assert!(tool_names(&list).contains(&"torori_library_search"));
+    let _ = std::fs::remove_file(&config);
+}
+
+#[test]
+fn unknown_pack_launch_fails_closed() {
+    let n = SEQ.fetch_add(1, Ordering::SeqCst);
+    let root = std::env::temp_dir().join(format!("torori-failclosed-{}-{n}", std::process::id()));
+    let data = format!("{}/data", env!("CARGO_MANIFEST_DIR"));
+    let output = Command::new(env!("CARGO_BIN_EXE_torori"))
+        .args([
+            "--data",
+            &data,
+            "--root",
+            root.to_str().unwrap(),
+            "--profile",
+            "voic",
+        ])
+        .env_remove("TORORI_TOOL_PROFILE")
+        .env_remove("TORORI_CONFIG")
+        .stdin(Stdio::null())
+        .output()
+        .expect("run torori with an unknown pack");
+    assert!(!output.status.success(), "status: {}", output.status);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("configuration_invalid"), "stderr: {stderr}");
+    assert!(stderr.contains("unknown pack 'voic'"), "stderr: {stderr}");
+    assert!(
+        stderr.contains("valid: core, full, bundles, comp, library, sfx, voice"),
+        "stderr: {stderr}"
+    );
+    let _ = std::fs::remove_dir_all(&root);
 }

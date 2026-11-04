@@ -15,12 +15,22 @@
 //! stdio front door (see `guard`) with the typed `-32022`
 //! unsupported-version error.
 //!
-//! Usage: `torori [--data <dir>] [--root <dir>]`
+//! Usage: `torori [--data <dir>] [--root <dir>] [--profile <spec>]
+//! [--config <file>]`
 //! - `--data`: shipped data tree (catalogue/pairs/voices);
 //!   defaults to `$TORORI_DATA_DIR`, an installed `../data`, or
 //!   `./data`.
 //! - `--root`: writable state tree; defaults to `$TORORI_ROOT` or
 //!   `$XDG_DATA_HOME/torori` (`~/.local/share/torori`).
+//! - `--profile`: tool profile spec (D-934, see `profile`):
+//!   `core` (default), `full`, or a comma-separated pack list.
+//!   Precedence: `--profile` → `$TORORI_TOOL_PROFILE` → the
+//!   config file's `tool_profile` → `core`. An unknown pack is a
+//!   typed `configuration_invalid` startup error — the server
+//!   never falls back to a wider surface.
+//! - `--config`: launch config file (its `tool_profile` key is
+//!   the one key read); defaults to `$TORORI_CONFIG`, or
+//!   `$XDG_CONFIG_HOME/torori/torori.toml` when that file exists.
 
 #![forbid(unsafe_code)]
 
@@ -32,7 +42,9 @@ use rmcp::ServiceExt;
 use rmcp::transport::async_rw::AsyncRwTransport;
 use tokio::sync::Mutex;
 use torori::TororiState;
+use torori::error::TororiError;
 use torori::guard;
+use torori::profile::ToolProfile;
 use torori::server::TororiServer;
 use torori::state::Paths;
 
@@ -49,26 +61,79 @@ fn parse_paths(args: &[String]) -> Paths {
         match arg.as_str() {
             "--data" => data = argv.next().map(PathBuf::from),
             "--root" => root = argv.next().map(PathBuf::from),
+            // Consumed by the profile resolution in main; the
+            // values are not paths.
+            "--profile" | "--config" => {
+                argv.next();
+            }
             other => eprintln!("torori: ignoring unknown arg {other}"),
         }
     }
     Paths::resolve(data, root)
 }
 
+/// The value of the first occurrence of `flag` in `args`.
+/// A flag with no following value is a typed
+/// `configuration_invalid` error, never a silent default.
+fn flag_value(args: &[String], flag: &str) -> Result<Option<String>, TororiError> {
+    let mut argv = args.iter();
+    while let Some(arg) = argv.next() {
+        if arg == flag {
+            return match argv.next() {
+                Some(value) => Ok(Some(value.clone())),
+                None => Err(TororiError::new(
+                    "configuration_invalid",
+                    format!("{flag} requires a value"),
+                )),
+            };
+        }
+    }
+    Ok(None)
+}
+
+/// Resolve the launch tool profile (D-934 precedence):
+/// `--profile` → `$TORORI_TOOL_PROFILE` → config `tool_profile`
+/// → `core`. The config file is named by `--config`, else
+/// `$TORORI_CONFIG`, else the default config path when it
+/// exists; a named-but-unreadable or invalid config fails
+/// closed, as does any invalid spec at any precedence level.
+fn resolve_launch_profile(args: &[String]) -> Result<ToolProfile, TororiError> {
+    let arg_spec = flag_value(args, "--profile")?;
+    let env_spec = std::env::var_os(torori::profile::PROFILE_ENV_VAR)
+        .map(|value| value.to_string_lossy().into_owned());
+    let explicit_config = flag_value(args, "--config")?
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os(torori::profile::CONFIG_ENV_VAR).map(PathBuf::from));
+    let config_path = match explicit_config {
+        Some(path) => Some(path),
+        None => torori::profile::default_config_path().filter(|path| path.is_file()),
+    };
+    let config_spec = match config_path {
+        Some(path) => torori::profile::load_config(&path)?.tool_profile,
+        None => None,
+    };
+    ToolProfile::resolve(
+        arg_spec.as_deref(),
+        env_spec.as_deref(),
+        config_spec.as_deref(),
+    )
+}
+
 /// Wire the pieces together: the guard owns stdio, the SDK
 /// service sits behind an in-process duplex, and a pump copies
 /// its responses back to stdout through the same lock the guard
 /// writes with.
-async fn run(paths: Paths) -> std::io::Result<()> {
-    let state = TororiState::load(paths)
+async fn run(paths: Paths, profile: ToolProfile) -> std::io::Result<()> {
+    let mut state = TororiState::load(paths)
         .map_err(|e| std::io::Error::other(format!("torori: state load failed: {e}")))?;
+    state.tool_profile = profile.spec_string();
     let (client_side, server_side) = tokio::io::duplex(DUPLEX_BUFFER_BYTES);
     let (server_read, server_write) = tokio::io::split(server_side);
     let (client_read, client_write) = tokio::io::split(client_side);
     let stdout: guard::SharedStdout = Arc::new(Mutex::new(tokio::io::stdout()));
 
     let ordering = guard::Ordering::new();
-    let handler = TororiServer::new(state);
+    let handler = TororiServer::new(state, profile);
     let serve = tokio::spawn(async move {
         let transport = AsyncRwTransport::new_server(server_read, server_write);
         match handler.serve(transport).await {
@@ -154,6 +219,13 @@ fn main() -> ExitCode {
     if args.first().map(String::as_str) == Some("backfill-voice-pack") {
         return backfill_verb(&args[1..]);
     }
+    let profile = match resolve_launch_profile(&args) {
+        Ok(profile) => profile,
+        Err(e) => {
+            eprintln!("torori: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
     let paths = parse_paths(&args);
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -166,7 +238,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match runtime.block_on(run(paths)) {
+    match runtime.block_on(run(paths, profile)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("torori: serve loop ended: {e}");

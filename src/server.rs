@@ -16,6 +16,12 @@
 //! handler to 2026-07-28, so `server/discover` advertises
 //! exactly one version and the SDK validates every request's
 //! `_meta` against it.
+//!
+//! The served surface is scoped by the launch tool profile
+//! (D-934, [`crate::profile`]): `tool_specs()` is the complete
+//! registry, and each process serves the profile's retained
+//! subset of it — the launched profile's catalog is what
+//! `tools/list` lists and what `tools/call` can resolve.
 
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
@@ -31,6 +37,7 @@ use serde_json::{Value, json};
 
 use crate::TororiState;
 use crate::error::TororiError;
+use crate::profile::ToolProfile;
 
 /// One tool's static contract.
 pub struct ToolSpec {
@@ -308,8 +315,19 @@ pub fn tool_specs() -> Vec<ToolSpec> {
     ]
 }
 
-fn tool_definitions() -> Vec<Tool> {
+/// The specs one launch serves under `profile`: the complete
+/// registry (`tool_specs()`, never itself filtered) retained by
+/// descriptor group (D-934). The full profile retains every
+/// spec, so its served surface is the registry by construction.
+pub fn served_specs(profile: &ToolProfile) -> Vec<ToolSpec> {
     tool_specs()
+        .into_iter()
+        .filter(|s| profile.serves_group(s.group))
+        .collect()
+}
+
+fn tool_definitions(profile: &ToolProfile) -> Vec<Tool> {
+    served_specs(profile)
         .into_iter()
         .map(|s| {
             let Value::Object(map) = s.schema else {
@@ -392,12 +410,18 @@ fn render(result: Result<Value, TororiError>) -> CallToolResult {
 
 pub struct TororiServer {
     state: Arc<Mutex<TororiState>>,
+    /// The launch profile scoping this process's served catalog
+    /// (D-934): `list_tools` serves it and `call_tool` resolves
+    /// names against it, so a non-profile tool is unknown to
+    /// this process.
+    profile: ToolProfile,
 }
 
 impl TororiServer {
-    pub fn new(state: TororiState) -> Self {
+    pub fn new(state: TororiState, profile: ToolProfile) -> Self {
         TororiServer {
             state: Arc::new(Mutex::new(state)),
+            profile,
         }
     }
 }
@@ -424,7 +448,7 @@ impl ServerHandler for TororiServer {
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
         Ok(ListToolsResult {
-            tools: tool_definitions(),
+            tools: tool_definitions(&self.profile),
             ..Default::default()
         })
     }
@@ -435,7 +459,10 @@ impl ServerHandler for TororiServer {
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
         let name = request.name.to_string();
-        let Some(spec) = tool_specs().into_iter().find(|s| s.name == name) else {
+        let Some(spec) = served_specs(&self.profile)
+            .into_iter()
+            .find(|s| s.name == name)
+        else {
             return Err(ErrorData::invalid_params(
                 format!("unknown tool: {name}"),
                 None,
@@ -465,6 +492,110 @@ impl ServerHandler for TororiServer {
                 .to_payload(),
             )])
             .into()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::*;
+    use crate::profile::CORE_GROUPS;
+
+    fn served_names(profile: &ToolProfile) -> Vec<&'static str> {
+        served_specs(profile).iter().map(|s| s.name).collect()
+    }
+
+    #[test]
+    fn validation_default_serves_exactly_the_core_surface() {
+        assert_eq!(
+            served_names(&ToolProfile::default()),
+            vec![
+                "torori_status",
+                "torori_catalogue_search",
+                "torori_catalogue_get",
+                "torori_catalogue_stats",
+                "torori_catalogue_transition",
+            ]
+        );
+    }
+
+    #[test]
+    fn validation_full_serves_the_registry_identically() {
+        let registry: Vec<&str> = tool_specs().iter().map(|s| s.name).collect();
+        assert_eq!(registry.len(), 19);
+        assert_eq!(served_names(&ToolProfile::full()), registry);
+    }
+
+    #[test]
+    fn validation_each_pack_adds_exactly_its_family() {
+        let cases: [(&str, usize); 5] = [
+            ("bundles", 10),
+            ("comp", 6),
+            ("library", 9),
+            ("sfx", 6),
+            ("voice", 8),
+        ];
+        for (pack, total) in cases {
+            let profile = ToolProfile::parse(pack).unwrap();
+            assert_eq!(served_names(&profile).len(), total, "pack {pack}");
+        }
+        let bundles = ToolProfile::parse("bundles").unwrap();
+        let names = served_names(&bundles);
+        assert!(names.contains(&"torori_pair_validate"), "{names:?}");
+        assert!(names.contains(&"torori_bundle_ingest"), "{names:?}");
+        assert!(!names.contains(&"torori_voice_generate"), "{names:?}");
+    }
+
+    #[test]
+    fn validation_coverage_law_every_group_has_exactly_one_home() {
+        // Every group in the real registry is core or belongs to
+        // exactly one pack, and every core/pack group is carried
+        // by at least one registered tool — the profile table
+        // cannot silently drift from the surface.
+        let registry_groups: BTreeSet<&str> = tool_specs().iter().map(|s| s.group).collect();
+        assert_eq!(registry_groups.len(), 8, "{registry_groups:?}");
+        for group in &registry_groups {
+            let pack_homes = ToolProfile::pack_names()
+                .iter()
+                .filter(|name| ToolProfile::pack_groups(name).unwrap().contains(group))
+                .count();
+            let homes = usize::from(CORE_GROUPS.contains(group)) + pack_homes;
+            assert_eq!(homes, 1, "group {group} has {homes} homes");
+        }
+        for group in CORE_GROUPS {
+            assert!(registry_groups.contains(group), "core group {group}");
+        }
+        for name in ToolProfile::pack_names() {
+            for group in ToolProfile::pack_groups(name).unwrap() {
+                assert!(registry_groups.contains(group), "pack {name} group {group}");
+            }
+        }
+    }
+
+    #[test]
+    fn adversarial_no_pack_serves_another_packs_tools() {
+        for name in ToolProfile::pack_names() {
+            let profile = ToolProfile::parse(name).unwrap();
+            for spec in tool_specs() {
+                let in_this_pack = ToolProfile::pack_groups(name)
+                    .unwrap()
+                    .contains(&spec.group);
+                let expected = CORE_GROUPS.contains(&spec.group) || in_this_pack;
+                assert_eq!(
+                    profile.serves_group(spec.group),
+                    expected,
+                    "pack {name}, tool {}",
+                    spec.name
+                );
+                assert_eq!(
+                    served_names(&profile).contains(&spec.name),
+                    expected,
+                    "pack {name}, tool {}",
+                    spec.name
+                );
+            }
         }
     }
 }

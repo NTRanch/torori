@@ -24,6 +24,7 @@ pub mod guard;
 pub mod library;
 pub mod manifest;
 pub mod pairs;
+pub mod profile;
 pub mod qc;
 pub mod server;
 pub mod sfx;
@@ -36,6 +37,11 @@ pub mod voice;
 /// dispatched on blocking threads; the surface is operator-scale,
 /// not a hot path).
 pub struct TororiState {
+    /// The launch tool profile's canonical spec string (D-934),
+    /// reported by `torori_status` so the served catalog's
+    /// scoping is visible in-band. Set by the binary at launch;
+    /// library loads default to `core`.
+    pub tool_profile: String,
     pub paths: state::Paths,
     pub catalogue: catalogue::Catalogue,
     pub library: library::LibraryStore,
@@ -59,6 +65,7 @@ impl TororiState {
         catalogue::lint_named_pairs(&catalogue, &bundles.program_docs)?;
         let voices = conditioning::VoiceRegistry::load(&paths)?;
         Ok(TororiState {
+            tool_profile: profile::ToolProfile::default().spec_string(),
             paths,
             catalogue,
             library,
@@ -74,6 +81,7 @@ impl TororiState {
             "name": "torori",
             "version": env!("CARGO_PKG_VERSION"),
             "protocol": guard::MODERN_VERSION,
+            "tool_profile": self.tool_profile,
             "counts": {
                 "catalogue_entries": self.catalogue.entries.len(),
                 "library_rows": self.library.rows.len(),

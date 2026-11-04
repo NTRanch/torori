@@ -33,7 +33,20 @@ fn spawn() -> Session {
     let root = std::env::temp_dir().join(format!("torori-faults-{}-{n}", std::process::id()));
     let data = format!("{}/data", env!("CARGO_MANIFEST_DIR"));
     let mut child = Command::new(env!("CARGO_BIN_EXE_torori"))
-        .args(["--data", &data, "--root", root.to_str().unwrap()])
+        // The fault sweep exercises every tool in the registry,
+        // so it launches the full profile (D-934): the default
+        // core launch does not serve the other families, and a
+        // non-profile call is a protocol error by design, not a
+        // domain fault. The --profile argument outranks any
+        // ambient TORORI_TOOL_PROFILE/config selection.
+        .args([
+            "--data",
+            &data,
+            "--root",
+            root.to_str().unwrap(),
+            "--profile",
+            "full",
+        ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
