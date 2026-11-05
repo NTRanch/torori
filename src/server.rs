@@ -150,7 +150,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_library_search",
             "library",
-            "Search the OpenNSFW library INDEX by text, pack, and licence state (CLEARED|NOT CLEARED|UNDETERMINED). Bounded, paginated; counts are server-computed.",
+            "Search the OpenNSFW library INDEX by text, pack, licence state (CLEARED|NOT CLEARED|UNDETERMINED). Bounded, paginated; server-computed counts.",
             json!({"type": "object", "properties": {
                 "query": {"type": "string"},
                 "pack": {"type": "string"},
@@ -163,7 +163,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_library_fetch",
             "library",
-            "Copy ONE CLEARED library file into a project's staging and append its attribution entry in the same operation. UNDETERMINED / NOT CLEARED rows refuse; a drifted file (sha256 mismatch) refuses. No bulk export exists.",
+            "Copy ONE CLEARED library file into project staging with its attribution entry. UNDETERMINED / NOT CLEARED rows and sha256-drifted files refuse. No bulk export.",
             json!({"type": "object", "properties": {
                 "pack": {"type": "string"},
                 "file": {"type": "string"},
@@ -175,7 +175,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_library_manifest",
             "library",
-            "A project's attribution manifest: every fetched file with its attribution line, licence, and hashes. Bounded, paginated.",
+            "A project's attribution manifest: every fetched file with attribution, licence, hashes. Bounded, paginated.",
             json!({"type": "object", "properties": {
                 "project": {"type": "string"},
                 "offset": page_props["offset"], "limit": page_props["limit"]
@@ -186,7 +186,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_library_ingest",
             "library",
-            "Ingest a per-file-capture tree into the INDEX: licence state comes from each file's <file>.meta.json sidecar. No capture → UNDETERMINED, never rounded up; NC/ND → NOT CLEARED. Idempotent per (pack, file).",
+            "Ingest a per-file-capture tree into the INDEX: licence state from each file's <file>.meta.json sidecar. No capture → UNDETERMINED, never rounded up; NC/ND → NOT CLEARED. Idempotent per (pack, file).",
             json!({"type": "object", "properties": {
                 "pack_dir": {"type": "string"},
                 "pack": {"type": "string"}
@@ -198,7 +198,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_bundle_validate",
             "bundles",
-            "Validate a cue-bundle directory (bundle.ron + assets) through the full ingest battery — schema, hashes, provenance, tier stamps, target_voice, pairs V1–V8 — without ingesting. First failure in §8 order refuses.",
+            "Validate a cue-bundle directory (bundle.ron + assets) via the full ingest battery — schema, hashes, provenance, tier stamps, target_voice, pairs V1–V8 — without ingesting. First §8 failure refuses.",
             json!({"type": "object", "properties": {
                 "bundle_dir": {"type": "string"},
                 "disclosures": {"type": "array", "items": {"type": "string"}}
@@ -209,7 +209,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_bundle_ingest",
             "bundles",
-            "Ingest a cue bundle: quarantine-copy, validate (the torori_bundle_validate battery), promote. Idempotent on content hash; partial ingest never happens; unvalidated bundles are never visible to generation tools.",
+            "Ingest a cue bundle: quarantine-copy, validate (torori_bundle_validate battery), promote. Idempotent on content hash; no partial ingest; unvalidated bundles stay invisible to generation tools.",
             json!({"type": "object", "properties": {
                 "bundle_dir": {"type": "string"},
                 "disclosures": {"type": "array", "items": {"type": "string"}}
@@ -230,7 +230,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_pair_validate",
             "pairs",
-            "Run the GAP5 V1–V8 battery over one TriggerPair: completeness, release reachability, precedence + safeword coverage, cue collision, scope, disclosure, ship order. Returns armed_grade + violations.",
+            "Run GAP5 V1–V8 over one TriggerPair: completeness, release reachability, precedence + safeword coverage, cue collision, scope, disclosure, ship order. Returns armed_grade + violations.",
             json!({"type": "object", "properties": {
                 "pair": {"type": "object"},
                 "shared_releases": {"type": "array", "items": {"type": "object"}},
@@ -256,7 +256,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_voice_list",
             "voice",
-            "The VoiceIdentity registry: construction records, locked references, lock states (designed|anchored|ear-admitted). Bounded, paginated.",
+            "VoiceIdentity registry: construction records, locked references, lock states (designed|anchored|ear-admitted). Bounded, paginated.",
             json!({"type": "object", "properties": {
                 "offset": page_props["offset"], "limit": page_props["limit"]
             }}),
@@ -266,7 +266,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_voice_generate",
             "voice",
-            "Generate voice takes for one conditioning-v1 record via Qwen3-TTS (v1 slots: induction, fragment, whisper, affirmation). File refs + §5.3 QC metrics only — nothing is played. Each take ships a complete §5.2 manifest (weights sha256 pinned), UNGRADED until the Owner's ear admits it. Unrepresentable conditioning and blocklisted text refuse.",
+            "Generate voice takes for one conditioning-v1 record via Qwen3-TTS (v1 slots: induction, fragment, whisper, affirmation). File refs + §5.3 QC metrics only — nothing played. Each take ships a complete §5.2 manifest (weights sha256 pinned), UNGRADED until the Owner's ear admits it. Unrepresentable conditioning and blocklisted text refuse.",
             json!({"type": "object", "properties": {
                 "conditioning": {"type": "object"},
                 "slot_class": {"type": "string", "enum": ["induction", "fragment", "whisper", "affirmation"]},
@@ -305,7 +305,7 @@ pub fn tool_specs() -> Vec<ToolSpec> {
         spec(
             "torori_voice_qc",
             "voice",
-            "Recompute a stored asset's §5.3 QC record, verify §5.2 manifest completeness, report golden deltas when a golden exists.",
+            "Recompute a stored asset's §5.3 QC record, verify §5.2 manifest completeness, report golden deltas if a golden exists.",
             json!({"type": "object", "properties": {
                 "asset_id": {"type": "string"}
             }, "required": ["asset_id"]}),
