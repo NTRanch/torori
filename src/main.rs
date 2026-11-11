@@ -17,8 +17,10 @@
 //!
 //! Usage: `torori [--data <dir>] [--root <dir>]`
 //! - `--data`: shipped data tree (catalogue/pairs/voices);
-//!   defaults to `$TORORI_DATA_DIR`, an installed `../data`, or
-//!   `./data`.
+//!   defaults to `$TORORI_DATA_DIR`, then the first of an
+//!   installed `../data`, the build tree's `data/`, or `./data`
+//!   that actually holds the shipped catalogue file (see
+//!   `state::data_dir_candidates`).
 //! - `--root`: writable state tree; defaults to `$TORORI_ROOT` or
 //!   `$XDG_DATA_HOME/torori` (`~/.local/share/torori`).
 

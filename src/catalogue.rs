@@ -147,7 +147,17 @@ impl Catalogue {
         let file = paths.catalogue_file();
         if !file.exists() {
             // First run without shipped data: an empty catalogue
-            // is honest; drift checks apply to present data.
+            // is honest; drift checks apply to present data. But
+            // it is never silent — a misresolved data dir (TR-1:
+            // the deployed server served 0 of 114 entries with no
+            // signal) must name the path it looked for on stderr,
+            // the MCP logging channel, so the miss is diagnosable
+            // from the client's server log.
+            eprintln!(
+                "torori: warning: no catalogue file at {} — serving an empty catalogue \
+                 (pass --data or set TORORI_DATA_DIR to the shipped data tree)",
+                file.display()
+            );
             return Ok(Catalogue::default());
         }
         let text = std::fs::read_to_string(&file)

@@ -91,3 +91,35 @@ fn catalogue_reproduces_the_record_exactly() {
     assert!(have.iter().any(|t| t.contains("Vore")), "{have:?}");
     assert!(have.iter().any(|t| t.contains("Wet friction")), "{have:?}");
 }
+
+/// TR-1 gate (plan torori.md): the count the server reports
+/// under its DEFAULT data resolution — no `--data`, no env
+/// override, the exact path the deployed client config takes —
+/// must agree with the data file on disk, counted independently
+/// here by counting `slug:` records in the RON text. The
+/// pre-fix resolver fell through to a cwd-relative `data/`,
+/// found no file under the client's cwd, and the loader served
+/// an empty catalogue: this test fails on any such disagreement
+/// (0 reported vs 114 in the data).
+#[test]
+fn default_resolution_reported_count_matches_the_data_file() {
+    if std::env::var_os("TORORI_DATA_DIR").is_some() {
+        // The premise is the default resolution; an env override
+        // in the test environment changes what is being measured.
+        return;
+    }
+    let data_file = concat!(env!("CARGO_MANIFEST_DIR"), "/data/catalogue/entries.ron");
+    let text = std::fs::read_to_string(data_file)
+        .unwrap_or_else(|e| panic!("data file unreadable at {data_file}: {e}"));
+    let in_data = text.matches("slug:").count();
+    assert_eq!(in_data, 114, "the shipped data file holds 114 entries");
+    let paths = Paths::resolve(None, Some(std::env::temp_dir().join("torori-tr1-gate")));
+    let catalogue = Catalogue::load(&paths).expect("catalogue loads under default resolution");
+    assert_eq!(
+        catalogue.entries.len(),
+        in_data,
+        "reported count and data file disagree (resolved data dir: {})",
+        paths.data_dir.display()
+    );
+    assert_eq!(catalogue.stats()["total"], in_data);
+}
