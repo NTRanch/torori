@@ -19,6 +19,7 @@ pub mod bundles;
 pub mod catalogue;
 pub mod comp;
 pub mod conditioning;
+pub mod cuetable;
 pub mod error;
 pub mod guard;
 pub mod library;
