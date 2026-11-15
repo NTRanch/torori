@@ -1,4 +1,6 @@
 # torori
+
+mcp-name: io.github.NTRanch/torori
 [![crates.io](https://img.shields.io/crates/v/torori.svg)](https://crates.io/crates/torori)
 
 The NTRanch estate sound MCP (rmcp, modern MCP era only —
