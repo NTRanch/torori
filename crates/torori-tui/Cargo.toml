@@ -1,0 +1,15 @@
+[package]
+name = "torori-tui"
+version = "1.0.1"
+edition = "2024"
+license = "Apache-2.0"
+description = "Torori TUI — sound-catalogue console for the torori MCP (fleet TUI pattern D-1562). Catalogue rows only: no audio is played, decoded for playback, or waveform-rendered."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+ratatui = "0.29"
+crossterm = "0.29"
+torori = { path = "../.." }
+sha2 = "0.10"

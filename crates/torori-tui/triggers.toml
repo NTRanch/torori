@@ -1,0 +1,54 @@
+# Torori trigger rules (fleet TUI programme D-1562, DESIGN §D4).
+# BLOCH lane law: every rule is stamped from birth with origin_lane
+# and content_label (D-1030). Unclassified NTRanch-origin material
+# defaults to content_label = "nsfw" (fail-closed); the sfw rule
+# below fires only for material the event itself identifies as the
+# SFW catalogue lane, and records that reason on the rule.
+# A rule not listed here and not visible in the Fleet panel does
+# not exist. Firing produces a lesson-candidate intent for bloch;
+# the live bloch client transport is a named follow-on rung — the
+# engine is fake-tested and every firing is audit-logged.
+
+[[rule]]
+id = "validation-failures-nsfw-to-bloch-lesson"
+origin_lane = "ntranch"
+content_label = "nsfw"
+content_label_reason = "fail-closed default: unclassified NTRanch-origin material is nsfw per D-1030"
+on_event = "validation.completed"
+target_mcp = "bloch"
+target_tool = "lesson_candidate"
+mode = "auto"
+max_depth = 1
+enabled = true
+
+[[rule.conditions]]
+field = "failure_count"
+op = "gt"
+value = "0"
+
+[[rule.conditions]]
+field = "material_lane"
+op = "ne"
+value = "sfw-catalogue"
+
+[[rule]]
+id = "validation-failures-sfw-catalogue-to-bloch-lesson"
+origin_lane = "ntranch"
+content_label = "sfw"
+content_label_reason = "event material_lane is sfw-catalogue: the validated material is the SFW catalogue lane"
+on_event = "validation.completed"
+target_mcp = "bloch"
+target_tool = "lesson_candidate"
+mode = "auto"
+max_depth = 1
+enabled = true
+
+[[rule.conditions]]
+field = "failure_count"
+op = "gt"
+value = "0"
+
+[[rule.conditions]]
+field = "material_lane"
+op = "eq"
+value = "sfw-catalogue"
