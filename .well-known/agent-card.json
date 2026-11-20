@@ -1,0 +1,57 @@
+{
+  "name": "Torori",
+  "description": "NTRanch sound MCP: catalogue, library lane, pair validation, cue bundles, voice and DSP SFX lanes.",
+  "version": "1.0.2",
+  "documentationUrl": "https://github.com/NTRanch/torori",
+  "provider": {
+    "organization": "NTRanch",
+    "url": "https://github.com/NTRanch"
+  },
+  "supportedInterfaces": [
+    {
+      "protocolBinding": "https://qompass.ai/extensions/mcp-interface/v1",
+      "protocolVersion": "1.0",
+      "url": "~/.cargo/bin/torori"
+    }
+  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extensions": [
+      {
+        "uri": "https://qompass.ai/extensions/mcp-interface/v1",
+        "description": "MCP stdio discovery and invocation metadata.",
+        "required": false,
+        "params": {
+          "implementation": "rmcp",
+          "interface": "mcp",
+          "invocation": {
+            "command": "~/.cargo/bin/torori",
+            "args": [],
+            "protocolEra": "2026-07-28",
+            "transport": "stdio"
+          },
+          "registryName": "io.github.NTRanch/torori"
+        }
+      }
+    ]
+  },
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "skills": [
+    {
+      "id": "sound-catalogue",
+      "name": "Sound catalogue",
+      "description": "Search and inspect catalogue entries, read coverage counts, and apply governed status transitions.",
+      "tags": [
+        "mcp",
+        "audio",
+        "catalogue"
+      ]
+    }
+  ]
+}

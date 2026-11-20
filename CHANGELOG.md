@@ -5,6 +5,13 @@ Versions follow the estate fleet line: the T0–T6 build shipped
 as 0.0.1; 1.0.0 is the close-out release (same 19-tool surface,
 docs brought current, consumer-session evidence filed).
 
+## 1.0.2 — 2026-11-20
+
+- Declare tools with the workspace companion crate `torori-derive` 0.1.0.
+  Tool schemas, annotations, profile membership, timeouts, and refusals
+  retain their existing behaviour.
+- Add an agent discovery card for the MCP stdio interface.
+
 ## 1.0.0 — 2026-10-28
 
 Close-out release. No surface changes: the 19 tools, their

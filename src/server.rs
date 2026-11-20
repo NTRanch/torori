@@ -26,6 +26,7 @@
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
+use mcp_derive::ToolDefinitions;
 use rmcp::model::{
     CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
     InitializeResult, ListToolsResult, PaginatedRequestParams, ProtocolVersion, ServerCapabilities,
@@ -82,57 +83,48 @@ fn spec(
 /// when its stage has landed — the surface never advertises a
 /// stub.
 pub fn tool_specs() -> Vec<ToolSpec> {
-    let page_props = json!({
+    ToolContract::definitions()
+}
+
+fn page_props() -> Value {
+    json!({
         "offset": {"type": "integer", "minimum": 0},
         "limit": {"type": "integer", "minimum": 1, "maximum": 200}
-    });
-    vec![
-        // ── Server group ──────────────────────────────────────
-        spec(
-            "torori_status",
-            "server",
-            "Server version, server-computed catalogue/library/bundle/voice counts, lane states, silence-rule posture.",
-            json!({"type": "object", "properties": {}}),
-            READ,
-            10,
-        ),
-        // ── Catalogue group ───────────────────────────────────
-        spec(
-            "torori_catalogue_search",
-            "catalogue",
-            "Search catalogue entries by text, kind, and status. Bounded, paginated; total is server-computed.",
-            json!({"type": "object", "properties": {
+    })
+}
+
+#[derive(ToolDefinitions)]
+#[tool(spec)]
+#[allow(dead_code)]
+enum ToolContract {
+    // ── Server group ──────────────────────────────────────
+    #[doc = "Server version, server-computed catalogue/library/bundle/voice counts, lane states, silence-rule posture."]
+    #[tool(name = "torori_status", group = "server", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {}}))]
+    Status,
+    // ── Catalogue group ───────────────────────────────────
+    #[doc = "Search catalogue entries by text, kind, and status. Bounded, paginated; total is server-computed."]
+    #[tool(name = "torori_catalogue_search", group = "catalogue", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
                 "query": {"type": "string"},
                 "kind": {"type": "string", "enum": ["KINK", "ACT", "REACTION"]},
                 "status": {"type": "string", "enum": ["HAVE-LIBRARY", "MEASURED-ONLY", "PLANNED", "GAP", "GENERATED"]},
-                "offset": page_props["offset"], "limit": page_props["limit"]
-            }}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_catalogue_get",
-            "catalogue",
-            "One catalogue entry by slug, in full.",
-            json!({"type": "object", "properties": {
+                "offset": page_props()["offset"], "limit": page_props()["limit"]
+            }}))]
+    CatalogueSearch,
+    #[doc = "One catalogue entry by slug, in full."]
+    #[tool(name = "torori_catalogue_get", group = "catalogue", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
                 "slug": {"type": "string"}
-            }, "required": ["slug"]}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_catalogue_stats",
-            "catalogue",
-            "Server-computed catalogue counts: total, by kind, by status, pair/form coverage.",
-            json!({"type": "object", "properties": {}}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_catalogue_transition",
-            "catalogue",
-            "Governed status transition. GENERATED requires asset_refs + §5.2 manifest_refs; leaving GENERATED requires an ear_verdict {verdict, admitted_by} — the Owner's gate event. Provenance class is never overwritten.",
-            json!({"type": "object", "properties": {
+            }, "required": ["slug"]}))]
+    CatalogueGet,
+    #[doc = "Server-computed catalogue counts: total, by kind, by status, pair/form coverage."]
+    #[tool(name = "torori_catalogue_stats", group = "catalogue", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {}}))]
+    CatalogueStats,
+    #[doc = "Governed status transition. GENERATED requires asset_refs + §5.2 manifest_refs; leaving GENERATED requires an ear_verdict {verdict, admitted_by} — the Owner's gate event. Provenance class is never overwritten."]
+    #[tool(name = "torori_catalogue_transition", group = "catalogue", timeout = 10, annotations = WRITE,
+        schema = json!({"type": "object", "properties": {
                 "slug": {"type": "string"},
                 "to_status": {"type": "string", "enum": ["HAVE-LIBRARY", "MEASURED-ONLY", "PLANNED", "GAP", "GENERATED"]},
                 "asset_refs": {"type": "array", "items": {"type": "string"}},
@@ -142,177 +134,118 @@ pub fn tool_specs() -> Vec<ToolSpec> {
                     "admitted_by": {"type": "string"},
                     "note": {"type": "string"}
                 }, "required": ["verdict", "admitted_by"]}
-            }, "required": ["slug", "to_status"]}),
-            WRITE,
-            10,
-        ),
-        // ── Library group ─────────────────────────────────────
-        spec(
-            "torori_library_search",
-            "library",
-            "Search the OpenNSFW library INDEX by text, pack, and licence state (CLEARED|NOT CLEARED|UNDETERMINED). Bounded, paginated; counts are server-computed.",
-            json!({"type": "object", "properties": {
+            }, "required": ["slug", "to_status"]}))]
+    CatalogueTransition,
+    // ── Library group ─────────────────────────────────────
+    #[doc = "Search the OpenNSFW library INDEX by text, pack, and licence state (CLEARED|NOT CLEARED|UNDETERMINED). Bounded, paginated; counts are server-computed."]
+    #[tool(name = "torori_library_search", group = "library", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
                 "query": {"type": "string"},
                 "pack": {"type": "string"},
                 "license_state": {"type": "string", "enum": ["CLEARED", "NOT CLEARED", "UNDETERMINED"]},
-                "offset": page_props["offset"], "limit": page_props["limit"]
-            }}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_library_fetch",
-            "library",
-            "Copy ONE CLEARED library file into a project's staging and append its attribution entry in the same operation. UNDETERMINED / NOT CLEARED rows refuse; a drifted file (sha256 mismatch) refuses. No bulk export exists.",
-            json!({"type": "object", "properties": {
+                "offset": page_props()["offset"], "limit": page_props()["limit"]
+            }}))]
+    LibrarySearch,
+    #[doc = "Copy ONE CLEARED library file into a project's staging and append its attribution entry in the same operation. UNDETERMINED / NOT CLEARED rows refuse; a drifted file (sha256 mismatch) refuses. No bulk export exists."]
+    #[tool(name = "torori_library_fetch", group = "library", timeout = 30, annotations = WRITE,
+        schema = json!({"type": "object", "properties": {
                 "pack": {"type": "string"},
                 "file": {"type": "string"},
                 "project": {"type": "string"}
-            }, "required": ["pack", "file", "project"]}),
-            WRITE,
-            30,
-        ),
-        spec(
-            "torori_library_manifest",
-            "library",
-            "A project's attribution manifest: every fetched file with its attribution line, licence, and hashes. Bounded, paginated.",
-            json!({"type": "object", "properties": {
+            }, "required": ["pack", "file", "project"]}))]
+    LibraryFetch,
+    #[doc = "A project's attribution manifest: every fetched file with its attribution line, licence, and hashes. Bounded, paginated."]
+    #[tool(name = "torori_library_manifest", group = "library", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
                 "project": {"type": "string"},
-                "offset": page_props["offset"], "limit": page_props["limit"]
-            }, "required": ["project"]}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_library_ingest",
-            "library",
-            "Ingest a per-file-capture tree into the INDEX: licence state comes from each file's <file>.meta.json sidecar. No capture → UNDETERMINED, never rounded up; NC/ND → NOT CLEARED. Idempotent per (pack, file).",
-            json!({"type": "object", "properties": {
+                "offset": page_props()["offset"], "limit": page_props()["limit"]
+            }, "required": ["project"]}))]
+    LibraryManifest,
+    #[doc = "Ingest a per-file-capture tree into the INDEX: licence state comes from each file's <file>.meta.json sidecar. No capture → UNDETERMINED, never rounded up; NC/ND → NOT CLEARED. Idempotent per (pack, file)."]
+    #[tool(name = "torori_library_ingest", group = "library", timeout = 300, annotations = WRITE_IDEMPOTENT,
+        schema = json!({"type": "object", "properties": {
                 "pack_dir": {"type": "string"},
                 "pack": {"type": "string"}
-            }, "required": ["pack_dir", "pack"]}),
-            WRITE_IDEMPOTENT,
-            300,
-        ),
-        // ── Bundle + pair group ───────────────────────────────
-        spec(
-            "torori_bundle_validate",
-            "bundles",
-            "Validate a cue-bundle directory (bundle.ron + assets) through the full ingest battery — schema, hashes, provenance, tier stamps, target_voice, pairs V1–V8 — without ingesting. First failure in §8 order refuses.",
-            json!({"type": "object", "properties": {
+            }, "required": ["pack_dir", "pack"]}))]
+    LibraryIngest,
+    // ── Bundle + pair group ───────────────────────────────
+    #[doc = "Validate a cue-bundle directory (bundle.ron + assets) through the full ingest battery — schema, hashes, provenance, tier stamps, target_voice, pairs V1–V8 — without ingesting. First failure in §8 order refuses."]
+    #[tool(name = "torori_bundle_validate", group = "bundles", timeout = 30, annotations = READ,
+        schema = json!({"type": "object", "properties": {
                 "bundle_dir": {"type": "string"},
                 "disclosures": {"type": "array", "items": {"type": "string"}}
-            }, "required": ["bundle_dir"]}),
-            READ,
-            30,
-        ),
-        spec(
-            "torori_bundle_ingest",
-            "bundles",
-            "Ingest a cue bundle: quarantine-copy, validate (the torori_bundle_validate battery), promote. Idempotent on content hash; partial ingest never happens; unvalidated bundles are never visible to generation tools.",
-            json!({"type": "object", "properties": {
+            }, "required": ["bundle_dir"]}))]
+    BundleValidate,
+    #[doc = "Ingest a cue bundle: quarantine-copy, validate (the torori_bundle_validate battery), promote. Idempotent on content hash; partial ingest never happens; unvalidated bundles are never visible to generation tools."]
+    #[tool(name = "torori_bundle_ingest", group = "bundles", timeout = 60, annotations = WRITE_IDEMPOTENT,
+        schema = json!({"type": "object", "properties": {
                 "bundle_dir": {"type": "string"},
                 "disclosures": {"type": "array", "items": {"type": "string"}}
-            }, "required": ["bundle_dir"]}),
-            WRITE_IDEMPOTENT,
-            60,
-        ),
-        spec(
-            "torori_bundle_list",
-            "bundles",
-            "Ingested bundles (id, content hash, producer, cue/pair counts, stored dir). Bounded, paginated.",
-            json!({"type": "object", "properties": {
-                "offset": page_props["offset"], "limit": page_props["limit"]
-            }}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_pair_validate",
-            "pairs",
-            "Run the GAP5 V1–V8 battery over one TriggerPair: completeness, release reachability, precedence + safeword coverage, cue collision, scope, disclosure, ship order. Returns armed_grade + violations.",
-            json!({"type": "object", "properties": {
+            }, "required": ["bundle_dir"]}))]
+    BundleIngest,
+    #[doc = "Ingested bundles (id, content hash, producer, cue/pair counts, stored dir). Bounded, paginated."]
+    #[tool(name = "torori_bundle_list", group = "bundles", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
+                "offset": page_props()["offset"], "limit": page_props()["limit"]
+            }}))]
+    BundleList,
+    #[doc = "Run the GAP5 V1–V8 battery over one TriggerPair: completeness, release reachability, precedence + safeword coverage, cue collision, scope, disclosure, ship order. Returns armed_grade + violations."]
+    #[tool(name = "torori_pair_validate", group = "pairs", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
                 "pair": {"type": "object"},
                 "shared_releases": {"type": "array", "items": {"type": "object"}},
                 "asset_index": {"type": "array", "items": {"type": "object", "properties": {
                     "asset_ref": {"type": "string"}, "sha256": {"type": "string"}
                 }, "required": ["asset_ref", "sha256"]}},
                 "disclosures": {"type": "array", "items": {"type": "string"}}
-            }, "required": ["pair"]}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_pair_list",
-            "pairs",
-            "Every pair visible to the server: data/pairs program docs plus ingested bundles. Bounded, paginated.",
-            json!({"type": "object", "properties": {
-                "offset": page_props["offset"], "limit": page_props["limit"]
-            }}),
-            READ,
-            10,
-        ),
-        // ── Voice group ───────────────────────────────────────
-        spec(
-            "torori_voice_list",
-            "voice",
-            "The VoiceIdentity registry: construction records, locked references, lock states (designed|anchored|ear-admitted). Bounded, paginated.",
-            json!({"type": "object", "properties": {
-                "offset": page_props["offset"], "limit": page_props["limit"]
-            }}),
-            READ,
-            10,
-        ),
-        spec(
-            "torori_voice_generate",
-            "voice",
-            "Generate voice takes for one conditioning-v1 record via Qwen3-TTS (v1 slots: induction, fragment, whisper, affirmation). File refs + §5.3 QC metrics only — nothing is played. Each take ships a complete §5.2 manifest (weights sha256 pinned), UNGRADED until the Owner's ear admits it. Unrepresentable conditioning and blocklisted text refuse.",
-            json!({"type": "object", "properties": {
+            }, "required": ["pair"]}))]
+    PairValidate,
+    #[doc = "Every pair visible to the server: data/pairs program docs plus ingested bundles. Bounded, paginated."]
+    #[tool(name = "torori_pair_list", group = "pairs", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
+                "offset": page_props()["offset"], "limit": page_props()["limit"]
+            }}))]
+    PairList,
+    // ── Voice group ───────────────────────────────────────
+    #[doc = "The VoiceIdentity registry: construction records, locked references, lock states (designed|anchored|ear-admitted). Bounded, paginated."]
+    #[tool(name = "torori_voice_list", group = "voice", timeout = 10, annotations = READ,
+        schema = json!({"type": "object", "properties": {
+                "offset": page_props()["offset"], "limit": page_props()["limit"]
+            }}))]
+    VoiceList,
+    #[doc = "Generate voice takes for one conditioning-v1 record via Qwen3-TTS (v1 slots: induction, fragment, whisper, affirmation). File refs + §5.3 QC metrics only — nothing is played. Each take ships a complete §5.2 manifest (weights sha256 pinned), UNGRADED until the Owner's ear admits it. Unrepresentable conditioning and blocklisted text refuse."]
+    #[tool(name = "torori_voice_generate", group = "voice", timeout = 900, annotations = WRITE,
+        schema = json!({"type": "object", "properties": {
                 "conditioning": {"type": "object"},
                 "slot_class": {"type": "string", "enum": ["induction", "fragment", "whisper", "affirmation"]},
                 "takes": {"type": "integer", "minimum": 1, "maximum": 8}
-            }, "required": ["conditioning", "slot_class"]}),
-            WRITE,
-            900,
-        ),
-        spec(
-            "torori_sfx_render",
-            "sfx",
-            "Render one deterministic DSP instrument (impact | wet_layer | friction | bed | room_tone) to a 48 kHz master WAV with §5.2 manifest. BIT-EXACT only: any other class refuses rather than substituting a lane.",
-            json!({"type": "object", "properties": {
+            }, "required": ["conditioning", "slot_class"]}))]
+    VoiceGenerate,
+    #[doc = "Render one deterministic DSP instrument (impact | wet_layer | friction | bed | room_tone) to a 48 kHz master WAV with §5.2 manifest. BIT-EXACT only: any other class refuses rather than substituting a lane."]
+    #[tool(name = "torori_sfx_render", group = "sfx", timeout = 60, annotations = WRITE,
+        schema = json!({"type": "object", "properties": {
                 "instrument": {"type": "string", "enum": ["impact", "wet_layer", "friction", "bed", "room_tone"]},
                 "params": {"type": "object"},
                 "seed": {"type": "integer"},
                 "duration_sec": {"type": "number"},
                 "determinism_class": {"type": "string", "enum": ["BIT-EXACT", "SEED-REPRODUCIBLE", "OUTPUT-UNIQUE"]}
-            }, "required": ["instrument"]}),
-            WRITE,
-            60,
-        ),
-        spec(
-            "torori_comp_assemble",
-            "comp",
-            "Route C assembly: base + gained/offset layers (file|generated|library|sfx), deterministic 48 kHz mix, §4 cleanup, §4.3 ship gate. NO-SHIP returns the untreated comp with failing numbers — never silently cleaned. Generated layers into a library base refuse (laundering).",
-            json!({"type": "object", "properties": {
+            }, "required": ["instrument"]}))]
+    SfxRender,
+    #[doc = "Route C assembly: base + gained/offset layers (file|generated|library|sfx), deterministic 48 kHz mix, §4 cleanup, §4.3 ship gate. NO-SHIP returns the untreated comp with failing numbers — never silently cleaned. Generated layers into a library base refuse (laundering)."]
+    #[tool(name = "torori_comp_assemble", group = "comp", timeout = 300, annotations = WRITE,
+        schema = json!({"type": "object", "properties": {
                 "asset_id": {"type": "string"},
                 "base": {"type": "object"},
                 "layers": {"type": "array", "items": {"type": "object"}},
                 "cleanup": {"type": "boolean"}
-            }, "required": ["asset_id", "base"]}),
-            WRITE,
-            300,
-        ),
-        spec(
-            "torori_voice_qc",
-            "voice",
-            "Recompute a stored asset's §5.3 QC record, verify §5.2 manifest completeness, report golden deltas when a golden exists.",
-            json!({"type": "object", "properties": {
+            }, "required": ["asset_id", "base"]}))]
+    CompAssemble,
+    #[doc = "Recompute a stored asset's §5.3 QC record, verify §5.2 manifest completeness, report golden deltas when a golden exists."]
+    #[tool(name = "torori_voice_qc", group = "voice", timeout = 30, annotations = READ,
+        schema = json!({"type": "object", "properties": {
                 "asset_id": {"type": "string"}
-            }, "required": ["asset_id"]}),
-            READ,
-            30,
-        ),
-    ]
+            }, "required": ["asset_id"]}))]
+    VoiceQc,
 }
 
 /// The specs one launch serves under `profile`: the complete

@@ -3,7 +3,7 @@
   "name": "io.github.NTRanch/torori",
   "title": "Torori",
   "description": "NTRanch sound MCP: catalogue, library lane, pair validation, cue bundles, voice and DSP SFX lanes.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://github.com/NTRanch/torori",
   "repository": {
     "url": "https://github.com/NTRanch/torori",
@@ -13,7 +13,7 @@
     {
       "registryType": "cargo",
       "identifier": "torori",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "transport": {
         "type": "stdio"
       }

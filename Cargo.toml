@@ -1,12 +1,17 @@
 [package]
 name = "torori"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2024"
 license = "Apache-2.0"
 description = "Torori — the NTRanch estate sound MCP: catalogue serving, OpenNSFW library lane, GAP5 pair validation, cue-bundle ingest, Qwen3-TTS voice lane and deterministic DSP/comp SFX lanes. Modern MCP era only (2026-07-28)."
 
 readme = "README.md"
+[workspace]
+members = ["crates/torori-derive"]
+resolver = "3"
+
 [dependencies]
+torori-derive = { path = "crates/torori-derive", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ron = "0.8"
